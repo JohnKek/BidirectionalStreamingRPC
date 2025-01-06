@@ -26,6 +26,11 @@ func (s *Server) Game(stream api.BattleshipService_GameServer) error {
 		logger.Error(fmt.Sprintf("Failed to receive startGame: %v", err))
 		return status.Errorf(codes.InvalidArgument, "You must provide a startGame")
 	}
+	if startGame.FieldSize <= 1 {
+		logger.Error(fmt.Sprintf("Field size must be greater than 1"))
+		return status.Errorf(codes.InvalidArgument, "You must provide a fieldSize greater than 1")
+	}
+
 	battleField := make([][]int, startGame.FieldSize)
 	for i := range battleField {
 		battleField[i] = make([]int, startGame.FieldSize)
@@ -39,15 +44,19 @@ outerLoop: // Метка для внешнего цикла
 		if errStream != nil {
 			if errStream == io.EOF {
 				logger.Error("Stream closed")
-				break // Завершение внутреннего цикла
+				break
 			}
 			logger.Error(errStream.Error())
-			break // Завершение внутреннего цикла
+			break
 		}
-		logger.Info(fmt.Sprintf("Received: %v", msgPack))
 		cord := msgPack.GetCoordinate()
 		if cord == nil {
 			continue
+		}
+		logger.Info(fmt.Sprintf("Received: %v", cord))
+		if cord.X < 0 || cord.X >= startGame.FieldSize || cord.Y < 0 || cord.Y >= startGame.FieldSize {
+			logger.Error(fmt.Sprintf("Invalid coordinate: %v", cord))
+			return status.Errorf(codes.OutOfRange, "Invalid coordinate")
 		}
 		switch battleField[cord.X][cord.Y] {
 		case 1:
@@ -55,7 +64,7 @@ outerLoop: // Метка для внешнего цикла
 			if err != nil {
 				return err
 			}
-			break outerLoop // Завершение внешнего цикла
+			break outerLoop
 		case 0:
 			battleField[cord.X][cord.Y] = 2
 			err = stream.Send(&api.AttackInformation{Status: "You missed"})
