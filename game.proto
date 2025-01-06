@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package battleship;
+option go_package = "api/grpc;api";
+service BattleshipService {
+  rpc Game(stream Request) returns (stream AttackInformation);
+}
+
+message AttackCoordinate{
+  int32 x = 1;
+  int32 y = 2;
+}
+
+message AttackInformation{
+  string status = 1;
+}
+
+message StartGame{
+  int32 fieldSize = 1;
+}
+
+message Request{
+  oneof data {
+    AttackCoordinate coordinate = 1;
+    StartGame start = 2;
+  }
+}
